@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>澎湖旅遊報價單</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav no-print">
+  <div>
+    <a class="nav-brand" href="/">🌊 澎湖旅遊規劃器</a>
+    <div style="font-size:0.72rem;opacity:0.75;margin-top:2px;padding-left:2px">潮旅國際旅行社｜交觀乙第1864號｜澎品保第0188號</div>
+  </div>
+  <div class="nav-links">
+    <a href="/" id="nav-planner">📝 規劃行程</a>
+    <a href="/trips" id="nav-trips">📋 所有報價</a>
+    <a href="/admin" id="nav-admin">⚙️ 後台管理</a>
+  </div>
+</nav>
+
+<div class="page">
+  <!-- Action bar (no-print) -->
+  <div class="flex gap-2 no-print" style="margin-bottom:20px;justify-content:flex-end">
+    <button class="btn btn-outline" onclick="history.back()">← 返回</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨️ 列印 / 儲存PDF</button>
+  </div>
+
+  <!-- Quote document -->
+  <div class="quote-container">
+    <div class="quote-header">
+      <div style="font-size:1rem;font-weight:600;margin-bottom:2px">潮旅國際旅行社</div>
+      <div style="font-size:0.78rem;opacity:0.8;margin-bottom:10px">交觀乙第1864號　澎品保第0188號</div>
+      <h1>澎 湖 旅 遊 行 程 報 價</h1>
+      <div style="font-size:0.9rem;opacity:0.85;margin-top:8px">
+        報價編號 #<span id="q-id"></span> ｜ 製作日期：<span id="q-date"></span>
+      </div>
+    </div>
+
+    <div class="quote-body">
+
+      <!-- Customer info -->
+      <div class="quote-section">
+        <h3>👤 客戶資料</h3>
+        <div class="grid-2" style="gap:8px;font-size:0.9rem">
+          <div><strong>客戶姓名：</strong><span id="q-customer"></span></div>
+          <div><strong>聯絡電話：</strong><span id="q-phone"></span></div>
+          <div><strong>Email：</strong><span id="q-email"></span></div>
+          <div><strong>行程日期：</strong><span id="q-tripdate"></span></div>
+          <div><strong>人數：</strong><span id="q-people"></span></div>
+          <div><strong>天數：</strong><span id="q-days"></span></div>
+        </div>
+      </div>
+
+      <!-- Itinerary -->
+      <div class="quote-section">
+        <h3>🗺️ 行程內容</h3>
+        <div id="q-itinerary"></div>
+      </div>
+
+      <!-- Price breakdown -->
+      <div class="quote-section">
+        <h3>💰 費用明細</h3>
+        <table class="quote-price-table">
+          <tr><td>✈️ 交通費用</td><td class="text-right" id="q-transport-cost"></td></tr>
+          <tr><td>🏨 住宿費用</td><td class="text-right" id="q-accommodation-cost"></td></tr>
+          <tr><td>🎯 景點票券</td><td class="text-right" id="q-activity-cost"></td></tr>
+          <tr><td>🍜 餐飲費用</td><td class="text-right" id="q-meal-cost"></td></tr>
+          <tr id="q-other-row" style="display:none"><td>📦 其他費用</td><td class="text-right" id="q-other-cost"></td></tr>
+          <tr style="background:var(--bg)"><td>成本小計</td><td class="text-right" id="q-subtotal"></td></tr>
+          <tr><td>服務費加成（<span id="q-markup"></span>）</td><td class="text-right">—</td></tr>
+          <tr>
+            <td><strong>🏷️ 報價總金額</strong></td>
+            <td class="text-right" style="font-size:1.3rem;color:var(--ocean)" id="q-total"></td>
+          </tr>
+          <tr style="background:var(--ocean-bg)">
+            <td><strong>每人平均報價</strong></td>
+            <td class="text-right" style="font-size:1.4rem;font-weight:700;color:var(--ocean)" id="q-per-person"></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Notes -->
+      <div class="quote-section" id="q-notes-section" style="display:none">
+        <h3>📝 備註事項</h3>
+        <p id="q-notes" style="font-size:0.9rem;line-height:1.7;white-space:pre-wrap"></p>
+      </div>
+
+    </div>
+
+    <div class="quote-footer">
+      <p style="font-weight:600;color:var(--ocean);margin-bottom:6px">本行程由潮旅國際旅行社提供　交觀乙第1864號　澎品保第0188號</p>
+      <p>※ 本報價單有效期限為報價日起 7 天，實際費用依出發日期市場行情為準。</p>
+      <p>※ 交通票價依航空公司／船公司定價為準，旺季期間建議提早訂購。</p>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/quote.js"></script>
+</body>
+</html>

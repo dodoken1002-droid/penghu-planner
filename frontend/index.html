@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>澎湖旅遊規劃器 — 新行程</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div>
+    <a class="nav-brand" href="/">🌊 澎湖旅遊規劃器</a>
+    <div style="font-size:0.72rem;opacity:0.75;margin-top:2px;padding-left:2px">潮旅國際旅行社｜交觀乙第1864號｜澎品保第0188號</div>
+  </div>
+  <div class="nav-links">
+    <a href="/" id="nav-planner">📝 規劃行程</a>
+    <a href="/trips" id="nav-trips">📋 所有報價</a>
+    <a href="/admin" id="nav-admin">⚙️ 後台管理</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title" id="page-title">📝 規劃新行程</div>
+
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
+
+    <!-- ── Left: Basic info ── -->
+    <div>
+      <div class="card">
+        <div class="card-title">👤 客戶資料</div>
+        <div class="form-group">
+          <label class="form-label">客戶姓名 <span class="required">*</span></label>
+          <input id="customer_name" class="form-control" placeholder="王小明">
+        </div>
+        <div class="form-group">
+          <label class="form-label">聯絡電話</label>
+          <input id="customer_phone" class="form-control" placeholder="0912-345-678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input id="customer_email" class="form-control" type="email" placeholder="email@example.com">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗓️ 行程基本設定</div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">出發日期</label>
+            <input id="trip_date" class="form-control" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">回程日期</label>
+            <input id="return_date" class="form-control" type="date">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">天數</label>
+            <select id="days" class="form-control">
+              <option value="1">1 日遊</option>
+              <option value="2" selected>2 天 1 夜</option>
+              <option value="3">3 天 2 夜</option>
+              <option value="4">4 天 3 夜</option>
+              <option value="5">5 天 4 夜</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">狀態</label>
+            <select id="status" class="form-control">
+              <option value="草稿">草稿</option>
+              <option value="報價中">報價中</option>
+              <option value="確認">確認</option>
+              <option value="取消">取消</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label class="form-label">大人人數</label>
+            <input id="adults" class="form-control" type="number" value="2" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">兒童人數</label>
+            <input id="children" class="form-control" type="number" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">敬老/愛陪</label>
+            <input id="seniors" class="form-control" type="number" value="0" min="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">✈️ 交通方式（來回）</div>
+        <div class="form-group">
+          <label class="form-label">選擇交通</label>
+          <select id="transport_id" class="form-control">
+            <option value="">── 選擇交通方式 ──</option>
+          </select>
+        </div>
+        <div id="transport-qty-row" class="form-group flex gap-2" style="display:none">
+          <label class="form-label" style="white-space:nowrap;margin-bottom:0">數量</label>
+          <input id="transport_qty" class="form-control" type="number" value="1" min="1" style="width:80px" onchange="calcCosts()">
+        </div>
+      </div>
+
+      <!-- ── Cost Summary ── -->
+      <div class="cost-panel">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:4px">💰 費用試算</div>
+        <div style="font-size:0.8rem;opacity:0.8;margin-bottom:10px" id="cost-pax-detail"></div>
+        <div class="cost-row"><span>✈️ 交通</span><span id="cost-transport">$0</span></div>
+        <div class="cost-row"><span>🏨 住宿</span><span id="cost-accommodation">$0</span></div>
+        <div class="cost-row"><span>🎯 景點票券</span><span id="cost-activity">$0</span></div>
+        <div class="cost-row"><span>🍜 餐飲</span><span id="cost-meal">$0</span></div>
+        <div class="cost-row"><span>📦 其他費用</span><span id="cost-other">$0</span></div>
+        <div class="cost-row total"><span>成本小計</span><span id="cost-subtotal">$0</span></div>
+        <div class="cost-row" style="margin-top:8px">
+          <span>利潤加成</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <input id="markup_percent" type="number" value="20" min="0" max="200"
+              style="width:60px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:4px;color:white;padding:3px 6px;font-size:0.9rem;text-align:center"> %
+          </span>
+        </div>
+        <div class="cost-row total"><span>報價總金額</span><span id="cost-final">$0</span></div>
+        <div class="cost-per-person">
+          <small>每人報價（平均）</small>
+          <span id="cost-per-person">$0</span>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="form-group">
+          <label class="form-label">其他費用（元）</label>
+          <input id="other_cost" class="form-control" type="number" value="0" min="0" placeholder="雜費、保險、…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">備註</label>
+          <textarea id="notes" class="form-control" placeholder="特殊需求、飲食禁忌、備注事項…"></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-direction:column">
+        <button class="btn btn-success btn-lg" onclick="saveTrip('報價中')" style="width:100%">
+          📄 生成報價單
+        </button>
+        <button class="btn btn-outline btn-lg" onclick="saveTrip('草稿')" style="width:100%">
+          💾 儲存草稿
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Right: Day-by-day itinerary ── -->
+    <div>
+      <div class="card">
+        <div class="card-title">🗺️ 每日行程規劃</div>
+        <div id="day-tabs" class="day-tabs"></div>
+        <div id="day-panels"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/planner.js"></script>
+</body>
+</html>

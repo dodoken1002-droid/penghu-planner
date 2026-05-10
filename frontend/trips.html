@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>澎湖旅遊規劃器 — 所有報價</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div>
+    <a class="nav-brand" href="/">🌊 澎湖旅遊規劃器</a>
+    <div style="font-size:0.72rem;opacity:0.75;margin-top:2px;padding-left:2px">潮旅國際旅行社｜交觀乙第1864號｜澎品保第0188號</div>
+  </div>
+  <div class="nav-links">
+    <a href="/" id="nav-planner">📝 規劃行程</a>
+    <a href="/trips" id="nav-trips">📋 所有報價</a>
+    <a href="/admin" id="nav-admin">⚙️ 後台管理</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="flex-between" style="margin-bottom:20px">
+    <div class="page-title" style="margin:0">📋 所有報價紀錄</div>
+    <a href="/" class="btn btn-primary">＋ 規劃新行程</a>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid-4" style="margin-bottom:20px" id="stats-row">
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--ocean)" id="stat-total">0</div>
+      <div class="text-muted">全部行程</div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--warning)" id="stat-quoting">0</div>
+      <div class="text-muted">報價中</div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--success)" id="stat-confirmed">0</div>
+      <div class="text-muted">已確認</div>
+    </div>
+    <div class="card" style="text-align:center;padding:16px">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--ocean)" id="stat-revenue">$0</div>
+      <div class="text-muted">確認總金額</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Filter bar -->
+    <div class="flex gap-2" style="margin-bottom:16px;flex-wrap:wrap">
+      <input id="search-input" class="form-control" placeholder="🔍 搜尋客戶姓名或電話..." style="max-width:280px">
+      <select id="filter-status" class="form-control" style="max-width:140px">
+        <option value="">全部狀態</option>
+        <option value="草稿">草稿</option>
+        <option value="報價中">報價中</option>
+        <option value="確認">確認</option>
+        <option value="取消">取消</option>
+      </select>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="trips-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>客戶</th>
+            <th>出發日期</th>
+            <th>行程</th>
+            <th>人數</th>
+            <th>成本</th>
+            <th>報價</th>
+            <th>狀態</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="trips-tbody">
+          <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  // Override renderTrips to also update stats
+  const _origInit = window.init;
+</script>
+<script src="/js/trips.js"></script>
+<script>
+  const _origLoad = loadTrips;
+  // Patch to compute stats after render
+  const origRender = renderTrips;
+  function renderTrips() {
+    origRender();
+    const total = allTrips.length;
+    const quoting = allTrips.filter(t => t.status === '報價中').length;
+    const confirmed = allTrips.filter(t => t.status === '確認').length;
+    const revenue = allTrips.filter(t => t.status === '確認').reduce((s, t) => s + t.final_quote, 0);
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-quoting').textContent = quoting;
+    document.getElementById('stat-confirmed').textContent = confirmed;
+    document.getElementById('stat-revenue').textContent = '$' + fmt(revenue);
+  }
+</script>
+</body>
+</html>
