@@ -146,6 +146,15 @@ class Trip(db.Model):
         }
 
 
+# ─── Health Check ─────────────────────────────────────────────────────────────
+
+@app.route('/api/healthz')
+def healthz():
+    db_url = app.config['SQLALCHEMY_DATABASE_URI']
+    db_type = 'postgresql' if 'postgresql' in db_url else 'sqlite'
+    return jsonify({'status': 'ok', 'db': db_type, 'has_pg': db_type == 'postgresql'})
+
+
 # ─── Page Routes ──────────────────────────────────────────────────────────────
 
 @app.route('/')
