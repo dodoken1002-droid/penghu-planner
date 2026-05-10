@@ -310,6 +310,7 @@ function calcCosts() {
   document.getElementById('cost-final').textContent = `$${fmt(final)}`;
   document.getElementById('cost-per-person').textContent = `$${fmt(perPerson)}`;
 
+  renderSummary();
   return { transportCost, accommodationCost, activityCost, mealCost, other, serviceFee, subtotal, final, perPerson, adults, children, seniors };
 }
 
@@ -493,6 +494,91 @@ function bindEvents() {
   ['adults', 'children', 'seniors', 'service_fee', 'other_cost'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', calcCosts);
   });
+  // 出發/回程日期自動聯動天數
+  ['trip_date', 'return_date'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', syncDaysFromDates);
+  });
+}
+
+// ── 日期自動計算天數 ──────────────────────────────────────────────────────────
+function syncDaysFromDates() {
+  const start = document.getElementById('trip_date').value;
+  const end   = document.getElementById('return_date').value;
+  if (!start || !end) return;
+  const diff = Math.round((new Date(end) - new Date(start)) / 86400000);
+  if (diff <= 0) return;
+  const days = diff + 1; // 出發當天也算一天
+  const daysEl = document.getElementById('days');
+  // 如果天數超出選單最大值，就加入新選項
+  const max = Math.max(...Array.from(daysEl.options).map(o => parseInt(o.value)));
+  if (days > max) {
+    for (let d = max + 1; d <= days; d++) {
+      const o = document.createElement('option');
+      o.value = d;
+      o.textContent = `${d} 天 ${d - 1} 夜`;
+      daysEl.appendChild(o);
+    }
+  }
+  daysEl.value = days;
+  buildDayTabs(days);
+}
+
+// ── 行程總覽（即時確認）─────────────────────────────────────────────────────
+function renderSummary() {
+  const el = document.getElementById('itinerary-summary');
+  if (!el) return;
+
+  const MEAL_ICON  = { breakfast: '🍳', lunch: '🍜', dinner: '🦞' };
+  const MEAL_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
+  let html = '';
+
+  // 交通
+  const tSel = document.getElementById('transport_id');
+  if (tSel && tSel.value) {
+    const tName = tSel.options[tSel.selectedIndex].textContent;
+    html += `<div class="itin-transport-block">✈️ <strong>交通：</strong>${tName}</div>`;
+  }
+
+  for (let d = 1; d <= currentDays; d++) {
+    let rows = '';
+
+    // 上午 / 下午景點
+    ['am', 'pm'].forEach(slot => {
+      const container = document.getElementById(`${slot}-items-${d}`);
+      if (!container) return;
+      container.querySelectorAll('select').forEach(sel => {
+        if (!sel.value || sel.value === 'custom') return;
+        const name = sel.options[sel.selectedIndex].textContent.split('（')[0];
+        rows += `<div class="itin-row"><span class="itin-row-icon">${slot === 'am' ? '🌅' : '🌆'}</span><span>${name}</span></div>`;
+      });
+    });
+
+    // 餐食
+    ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+      const sel = document.getElementById(`${meal}-${d}`);
+      if (!sel || !sel.value) return;
+      const name = sel.value === 'custom'
+        ? (document.getElementById(`custom-${meal}-name-${d}`)?.value || '自訂餐廳')
+        : sel.options[sel.selectedIndex].textContent.split('（')[0];
+      rows += `<div class="itin-row"><span class="itin-row-icon">${MEAL_ICON[meal]}</span><span>${MEAL_LABEL[meal]}：${name}</span></div>`;
+    });
+
+    // 住宿
+    const accSel = document.getElementById(`accommodation-${d}`);
+    if (accSel && accSel.value) {
+      const rooms = document.getElementById(`accommodation-rooms-${d}`)?.value || 1;
+      const name = accSel.value === 'custom'
+        ? (document.getElementById(`custom-accommodation-name-${d}`)?.value || '自訂住宿')
+        : accSel.options[accSel.selectedIndex].textContent.split('（')[0];
+      rows += `<div class="itin-row"><span class="itin-row-icon">🏨</span><span>住宿：${name}（${rooms} 房）</span></div>`;
+    }
+
+    if (rows) {
+      html += `<div class="itin-day-block"><div class="itin-day-label">📅 第 ${d} 天</div>${rows}</div>`;
+    }
+  }
+
+  el.innerHTML = html || '<div class="itin-empty">尚未選擇任何行程項目</div>';
 }
 
 window.addEventListener('DOMContentLoaded', init);

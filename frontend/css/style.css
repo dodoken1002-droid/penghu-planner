@@ -440,6 +440,62 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .page { padding: 16px; }
 }
 
+/* ── Itinerary Summary ── */
+.itin-summary {
+  margin-top: 20px;
+  border-top: 2px solid var(--ocean-bg);
+  padding-top: 16px;
+}
+.itin-summary-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ocean);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.itin-day-block {
+  background: var(--bg);
+  border: 1px solid var(--ocean-bg);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.itin-day-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ocean);
+  margin-bottom: 6px;
+}
+.itin-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text);
+  padding: 2px 0;
+  line-height: 1.4;
+}
+.itin-row-icon { flex-shrink: 0; width: 18px; text-align: center; }
+.itin-transport-block {
+  background: linear-gradient(90deg, var(--ocean-bg), #fff);
+  border-left: 3px solid var(--ocean);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.itin-empty {
+  color: var(--muted);
+  font-size: 0.83rem;
+  text-align: center;
+  padding: 12px 0;
+}
+
 .highlight-box {
   background: var(--bg);
   border: 1.5px solid var(--ocean-pale);
