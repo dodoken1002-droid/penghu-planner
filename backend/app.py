@@ -9,7 +9,13 @@ frontend_dir = os.path.join(basedir, '..', 'frontend')
 
 app = Flask(__name__, static_folder=frontend_dir, static_url_path='')
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "penghu.db")}'
+
+# Railway 提供 DATABASE_URL（PostgreSQL）；本地開發用 SQLite
+_db_url = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(basedir, "penghu.db")}')
+# SQLAlchemy 需要 postgresql:// 而 Railway 有時給 postgres://
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
