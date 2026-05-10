@@ -83,26 +83,6 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script>
-  // Override renderTrips to also update stats
-  const _origInit = window.init;
-</script>
 <script src="/js/trips.js"></script>
-<script>
-  const _origLoad = loadTrips;
-  // Patch to compute stats after render
-  const origRender = renderTrips;
-  function renderTrips() {
-    origRender();
-    const total = allTrips.length;
-    const quoting = allTrips.filter(t => t.status === '報價中').length;
-    const confirmed = allTrips.filter(t => t.status === '確認').length;
-    const revenue = allTrips.filter(t => t.status === '確認').reduce((s, t) => s + t.final_quote, 0);
-    document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-quoting').textContent = quoting;
-    document.getElementById('stat-confirmed').textContent = confirmed;
-    document.getElementById('stat-revenue').textContent = '$' + fmt(revenue);
-  }
-</script>
 </body>
 </html>
