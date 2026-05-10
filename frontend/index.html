@@ -116,14 +116,19 @@
         <div class="cost-row"><span>🍜 餐飲</span><span id="cost-meal">$0</span></div>
         <div class="cost-row"><span>📦 其他費用</span><span id="cost-other">$0</span></div>
         <div class="cost-row total"><span>成本小計</span><span id="cost-subtotal">$0</span></div>
-        <div class="cost-row" style="margin-top:8px">
-          <span>利潤加成</span>
-          <span style="display:flex;align-items:center;gap:6px">
-            <input id="markup_percent" type="number" value="20" min="0" max="200"
-              style="width:60px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:4px;color:white;padding:3px 6px;font-size:0.9rem;text-align:center"> %
-          </span>
+        <div style="border-top:1px solid rgba(255,255,255,0.3);margin-top:10px;padding-top:10px">
+          <div style="font-size:0.78rem;opacity:0.85;margin-bottom:6px">
+            🧾 代辦服務費<br>
+            <span style="opacity:0.7;font-size:0.72rem">（含旅行社責任險、代購機票／船票及雜支）</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>$</span>
+            <input id="service_fee" type="number" value="0" min="0"
+              style="flex:1;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:4px;color:white;padding:5px 8px;font-size:1rem;text-align:center"
+              placeholder="輸入金額" onchange="calcCosts()" oninput="calcCosts()">
+          </div>
         </div>
-        <div class="cost-row total"><span>報價總金額</span><span id="cost-final">$0</span></div>
+        <div class="cost-row total" style="margin-top:10px"><span>報價總金額</span><span id="cost-final">$0</span></div>
         <div class="cost-per-person">
           <small>每人報價（平均）</small>
           <span id="cost-per-person">$0</span>

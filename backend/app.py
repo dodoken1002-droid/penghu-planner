@@ -109,7 +109,8 @@ class Trip(db.Model):
     meal_cost = db.Column(db.Integer, default=0)
     other_cost = db.Column(db.Integer, default=0)
     cost_subtotal = db.Column(db.Integer, default=0)
-    markup_percent = db.Column(db.Float, default=20)
+    service_fee = db.Column(db.Integer, default=0)    # 代辦服務費（固定金額）
+    markup_percent = db.Column(db.Float, default=0)   # 保留舊欄位，前端不再使用
     final_quote = db.Column(db.Integer, default=0)
     quote_per_person = db.Column(db.Integer, default=0)
     status = db.Column(db.String(20), default='草稿')
@@ -129,6 +130,7 @@ class Trip(db.Model):
             'accommodation_cost': self.accommodation_cost,
             'activity_cost': self.activity_cost, 'meal_cost': self.meal_cost,
             'other_cost': self.other_cost, 'cost_subtotal': self.cost_subtotal,
+            'service_fee': self.service_fee,
             'markup_percent': self.markup_percent, 'final_quote': self.final_quote,
             'quote_per_person': self.quote_per_person,
             'status': self.status, 'notes': self.notes,
@@ -298,11 +300,11 @@ def calc_quote(data, current=None):
     vc = int(data.get('activity_cost', getattr(current, 'activity_cost', 0)))
     mc = int(data.get('meal_cost', getattr(current, 'meal_cost', 0)))
     oc = int(data.get('other_cost', getattr(current, 'other_cost', 0)))
+    sf = int(data.get('service_fee', getattr(current, 'service_fee', 0)))  # 代辦服務費（固定金額）
     subtotal = tc + ac + vc + mc + oc
-    markup = float(data.get('markup_percent', getattr(current, 'markup_percent', 20)))
-    final = int(subtotal * (1 + markup / 100))
+    final = subtotal + sf
     per_person = int(final / total_people) if total_people > 0 else 0
-    return total_people, tc, ac, vc, mc, oc, subtotal, markup, final, per_person
+    return total_people, tc, ac, vc, mc, oc, subtotal, sf, final, per_person
 
 
 @app.route('/api/trips', methods=['GET'])
@@ -315,7 +317,7 @@ def get_trips():
 @app.route('/api/trips', methods=['POST'])
 def create_trip():
     d = request.json
-    tp, tc, ac, vc, mc, oc, sub, mk, final, pp = calc_quote(d)
+    tp, tc, ac, vc, mc, oc, sub, sf, final, pp = calc_quote(d)
     trip = Trip(
         customer_name=d.get('customer_name', ''), customer_phone=d.get('customer_phone', ''),
         customer_email=d.get('customer_email', ''), trip_date=d.get('trip_date', ''),
@@ -323,7 +325,7 @@ def create_trip():
         adults=d.get('adults', 2), children=d.get('children', 0), seniors=d.get('seniors', 0), total_people=tp,
         transport_cost=tc, accommodation_cost=ac, activity_cost=vc,
         meal_cost=mc, other_cost=oc, cost_subtotal=sub,
-        markup_percent=mk, final_quote=final, quote_per_person=pp,
+        service_fee=sf, markup_percent=0, final_quote=final, quote_per_person=pp,
         status=d.get('status', '草稿'), notes=d.get('notes', ''),
         itinerary_data=json.dumps(d.get('itinerary_data', {}), ensure_ascii=False)
     )
@@ -343,11 +345,11 @@ def update_trip(id):
         if k in d: setattr(trip, k, d[k])
     if 'itinerary_data' in d:
         trip.itinerary_data = json.dumps(d['itinerary_data'], ensure_ascii=False)
-    tp, tc, ac, vc, mc, oc, sub, mk, final, pp = calc_quote(d, trip)
+    tp, tc, ac, vc, mc, oc, sub, sf, final, pp = calc_quote(d, trip)
     trip.total_people = tp
     trip.transport_cost = tc; trip.accommodation_cost = ac
     trip.activity_cost = vc; trip.meal_cost = mc; trip.other_cost = oc
-    trip.cost_subtotal = sub; trip.markup_percent = mk
+    trip.cost_subtotal = sub; trip.service_fee = sf; trip.markup_percent = 0
     trip.final_quote = final; trip.quote_per_person = pp
     trip.updated_at = datetime.utcnow()
     db.session.commit()

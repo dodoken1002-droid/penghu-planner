@@ -68,7 +68,7 @@ function renderQuote(trip) {
     document.getElementById('q-other-cost').textContent = `$${fmt(trip.other_cost)}`;
   }
   document.getElementById('q-subtotal').textContent = `$${fmt(trip.cost_subtotal)}`;
-  document.getElementById('q-markup').textContent = `${trip.markup_percent}%`;
+  document.getElementById('q-service-fee').textContent = trip.service_fee > 0 ? `$${fmt(trip.service_fee)}` : '—';
   document.getElementById('q-total').textContent = `$${fmt(trip.final_quote)}`;
   document.getElementById('q-per-person').textContent = `$${fmt(trip.quote_per_person)}`;
 

@@ -287,9 +287,9 @@ function calcCosts() {
   }
 
   const other = parseInt(document.getElementById('other_cost').value) || 0;
+  const serviceFee = parseInt(document.getElementById('service_fee').value) || 0;
   const subtotal = transportCost + accommodationCost + activityCost + mealCost + other;
-  const markup = parseFloat(document.getElementById('markup_percent').value) || 0;
-  const final = Math.round(subtotal * (1 + markup / 100));
+  const final = subtotal + serviceFee;
   const perPerson = total > 0 ? Math.round(final / total) : 0;
 
   // 顯示人數細項
@@ -310,7 +310,7 @@ function calcCosts() {
   document.getElementById('cost-final').textContent = `$${fmt(final)}`;
   document.getElementById('cost-per-person').textContent = `$${fmt(perPerson)}`;
 
-  return { transportCost, accommodationCost, activityCost, mealCost, other, subtotal, markup, final, perPerson, adults, children, seniors };
+  return { transportCost, accommodationCost, activityCost, mealCost, other, serviceFee, subtotal, final, perPerson, adults, children, seniors };
 }
 
 // ── Collect form data ─────────────────────────────────────────────────────────
@@ -387,7 +387,7 @@ function collectData(status) {
     activity_cost: costs.activityCost,
     meal_cost: costs.mealCost,
     other_cost: costs.other,
-    markup_percent: parseFloat(document.getElementById('markup_percent').value) || 20,
+    service_fee: parseInt(document.getElementById('service_fee').value) || 0,
     notes: document.getElementById('notes').value,
     status: status || '草稿',
     itinerary_data: itinerary,
@@ -396,8 +396,11 @@ function collectData(status) {
 
 // ── Save trip ─────────────────────────────────────────────────────────────────
 async function saveTrip(status) {
-  const data = collectData(status);
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '儲存中…'; }
+
   try {
+    const data = collectData(status);   // ← 移入 try/catch，確保錯誤被捕捉
     let trip;
     if (editingTripId) {
       trip = await apiFetch(`/api/trips/${editingTripId}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -406,12 +409,20 @@ async function saveTrip(status) {
       editingTripId = trip.id;
       history.replaceState(null, '', `/?id=${trip.id}`);
     }
-    toast(status === '報價中' ? '報價已儲存！' : '草稿已儲存');
+
     if (status === '報價中') {
-      setTimeout(() => window.location.href = `/quote?id=${trip.id}`, 800);
+      toast(`✅ 已儲存到「所有報價」(#${trip.id})，即將開啟報價單…`);
+      setTimeout(() => window.location.href = `/quote?id=${trip.id}`, 1200);
+    } else {
+      toast(`✅ 草稿已儲存 (#${trip.id})`);
+      if (btn) { btn.disabled = false; btn.innerHTML = '💾 儲存草稿'; }
     }
   } catch (e) {
-    toast('儲存失敗：' + e.message, 'error');
+    toast('❌ 儲存失敗：' + e.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = status === '報價中' ? '📄 生成報價單' : '💾 儲存草稿';
+    }
   }
 }
 
@@ -428,7 +439,7 @@ async function loadTrip(id) {
   document.getElementById('seniors').value = trip.seniors || 0;
   document.getElementById('days').value = trip.days;
   document.getElementById('other_cost').value = trip.other_cost;
-  document.getElementById('markup_percent').value = trip.markup_percent;
+  document.getElementById('service_fee').value = trip.service_fee || 0;
   document.getElementById('notes').value = trip.notes;
 
   buildDayTabs(trip.days);
@@ -479,7 +490,7 @@ function bindEvents() {
     qtyRow.style.display = needsQty ? 'flex' : 'none';
     calcCosts();
   });
-  ['adults', 'children', 'seniors', 'markup_percent', 'other_cost'].forEach(id => {
+  ['adults', 'children', 'seniors', 'service_fee', 'other_cost'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', calcCosts);
   });
 }
