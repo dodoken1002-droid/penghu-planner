@@ -1,6 +1,7 @@
 let allTrips = [];
 
 async function init() {
+  await requirePage(['admin', 'viewer']);
   setActive('nav-trips');
   await loadTrips();
   document.getElementById('filter-status').addEventListener('change', renderTrips);

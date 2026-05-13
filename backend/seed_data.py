@@ -1,7 +1,14 @@
-from backend.app import db, Attraction, Restaurant, Transportation, Accommodation
+from backend.app import db, Attraction, Restaurant, Transportation, Accommodation, User
 
 
 def seed_database():
+    # Seed default admin user
+    if not User.query.filter_by(username='admin').first():
+        admin = User(username='admin', role='admin', display_name='系統管理者')
+        admin.set_password('Admin@1864')
+        db.session.add(admin)
+        db.session.commit()
+
     if Attraction.query.count() > 0:
         return
 

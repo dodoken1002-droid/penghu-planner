@@ -2,6 +2,7 @@ const MEAL_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' };
 const MEAL_ICON = { breakfast: '🍳', lunch: '🍜', dinner: '🦞' };
 
 async function init() {
+  await requirePage(['admin', 'viewer']);
   const id = new URLSearchParams(location.search).get('id');
   if (!id) { document.body.innerHTML = '<p style="padding:40px">缺少行程編號</p>'; return; }
 

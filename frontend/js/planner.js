@@ -5,6 +5,7 @@ let currentDays = 2;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
+  await requirePage(['admin']);
   setActive('nav-planner');
   const [at, re, tr, ac] = await Promise.all([
     apiFetch('/api/attractions'),
