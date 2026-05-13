@@ -438,6 +438,11 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   margin: 2px;
 }
 
+/* ── Accommodation tree rows ── */
+.acc-main-row td { border-bottom: none !important; }
+.acc-room-row td { border-top: none !important; padding-top: 2px; padding-bottom: 4px; }
+.acc-room-row + .acc-main-row td { border-top: 1px solid var(--border) !important; }
+
 /* ── Print ── */
 @media print {
   .nav, .no-print { display: none !important; }

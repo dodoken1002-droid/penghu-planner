@@ -52,7 +52,8 @@ function renderQuote(trip) {
     });
 
     if (day.accommodation) {
-      html += `<div class="quote-item">🏨 住宿：${day.accommodation.name}（${day.accommodation.rooms} 房 × $${fmt(day.accommodation.price)}/晚）</div>`;
+      const rtStr = day.accommodation.room_type ? ` — ${day.accommodation.room_type}` : '';
+      html += `<div class="quote-item">🏨 住宿：${day.accommodation.name}${rtStr}（${day.accommodation.rooms} 房 × $${fmt(day.accommodation.price)}/晚）</div>`;
     }
 
     section.innerHTML = html;

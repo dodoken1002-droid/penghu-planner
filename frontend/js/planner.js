@@ -125,7 +125,7 @@ function buildDayHTML(d, totalDays) {
       ${!isLast ? `
       <div class="section-header mt-3">🏨 住宿</div>
       <div class="item-row meal-row">
-        <select class="form-control" id="accommodation-${d}" onchange="calcCosts()">
+        <select class="form-control" id="accommodation-${d}" onchange="onAccommodationChange(${d})">
           <option value="">── 選擇住宿 ──</option>
           ${REF.accommodations.map(a =>
             `<option value="${a.id}" data-price="${a.price_per_room_night}">${a.name}（$${fmt(a.price_per_room_night)}/晚）</option>`
@@ -133,6 +133,11 @@ function buildDayHTML(d, totalDays) {
           <option value="custom">✏️ 自訂...</option>
         </select>
         <input type="number" class="form-control" id="accommodation-rooms-${d}" placeholder="房數" value="1" min="1" onchange="calcCosts()" style="width:80px">
+      </div>
+      <div id="room-type-row-${d}" style="display:none;margin-top:6px">
+        <select class="form-control" id="room-type-${d}" onchange="calcCosts()">
+          <option value="">── 選擇房型（選填）──</option>
+        </select>
       </div>
       <div id="custom-accommodation-${d}" style="display:none">
         <input class="form-control mt-2" id="custom-accommodation-name-${d}" placeholder="住宿名稱">
@@ -168,6 +173,33 @@ function onMealChange(d, meal) {
   const sel = document.getElementById(`${meal}-${d}`);
   const customDiv = document.getElementById(`custom-${meal}-${d}`);
   customDiv.style.display = sel.value === 'custom' ? 'block' : 'none';
+  calcCosts();
+}
+
+function onAccommodationChange(d) {
+  const accSel     = document.getElementById(`accommodation-${d}`);
+  const customDiv  = document.getElementById(`custom-accommodation-${d}`);
+  const roomRow    = document.getElementById(`room-type-row-${d}`);
+  const roomSel    = document.getElementById(`room-type-${d}`);
+
+  customDiv.style.display = accSel.value === 'custom' ? 'block' : 'none';
+
+  if (accSel.value && accSel.value !== 'custom') {
+    const acc = REF.accommodations.find(a => a.id == accSel.value);
+    if (acc && acc.rooms && acc.rooms.length > 0) {
+      roomSel.innerHTML = '<option value="">── 選擇房型（選填）──</option>' +
+        acc.rooms.map(r =>
+          `<option value="${r.id}" data-price="${r.price}">${r.room_type}${r.room_number ? '（' + r.room_number + '）' : ''}（$${fmt(r.price)}/晚）</option>`
+        ).join('');
+      roomRow.style.display = 'block';
+    } else {
+      roomSel.innerHTML = '<option value="">── 選擇房型（選填）──</option>';
+      roomRow.style.display = 'none';
+    }
+  } else {
+    roomSel.innerHTML = '<option value="">── 選擇房型（選填）──</option>';
+    roomRow.style.display = 'none';
+  }
   calcCosts();
 }
 
@@ -276,9 +308,15 @@ function calcCosts() {
     if (accSel) {
       const rooms = parseInt(document.getElementById(`accommodation-rooms-${d}`)?.value) || 1;
       if (accSel.value && accSel.value !== 'custom') {
-        const opt = accSel.options[accSel.selectedIndex];
-        if (opt && opt.dataset.price) {
-          accommodationCost += parseInt(opt.dataset.price) * rooms;
+        const roomTypeSel = document.getElementById(`room-type-${d}`);
+        if (roomTypeSel && roomTypeSel.value) {
+          const roomOpt = roomTypeSel.options[roomTypeSel.selectedIndex];
+          accommodationCost += (parseInt(roomOpt.dataset.price) || 0) * rooms;
+        } else {
+          const opt = accSel.options[accSel.selectedIndex];
+          if (opt && opt.dataset.price) {
+            accommodationCost += parseInt(opt.dataset.price) * rooms;
+          }
         }
       } else if (accSel.value === 'custom') {
         const cp = parseInt(document.getElementById(`custom-accommodation-price-${d}`)?.value) || 0;
@@ -355,13 +393,27 @@ function collectData(status) {
       const rooms = parseInt(document.getElementById(`accommodation-rooms-${d}`)?.value) || 1;
       if (accSel.value && accSel.value !== 'custom') {
         const found = REF.accommodations.find(a => a.id == accSel.value);
-        if (found) day.accommodation = { id: found.id, name: found.name, rooms, price: found.price_per_room_night };
+        if (found) {
+          const roomTypeSel = document.getElementById(`room-type-${d}`);
+          let roomTypeId = null, roomType = null, roomPrice = found.price_per_room_night;
+          if (roomTypeSel && roomTypeSel.value) {
+            roomTypeId = parseInt(roomTypeSel.value);
+            const roomOpt = roomTypeSel.options[roomTypeSel.selectedIndex];
+            roomType = roomOpt.textContent.split('（')[0];
+            roomPrice = parseInt(roomOpt.dataset.price) || roomPrice;
+          }
+          day.accommodation = {
+            id: found.id, name: found.name, rooms, price: roomPrice,
+            room_type_id: roomTypeId, room_type: roomType,
+          };
+        }
       } else if (accSel.value === 'custom') {
         day.accommodation = {
           id: null,
           name: document.getElementById(`custom-accommodation-name-${d}`)?.value || '自訂住宿',
           rooms,
           price: parseInt(document.getElementById(`custom-accommodation-price-${d}`)?.value) || 0,
+          room_type_id: null, room_type: null,
         };
       }
     }
@@ -468,8 +520,13 @@ async function loadTrip(id) {
         const sel = document.getElementById(`accommodation-${d}`);
         if (sel && day.accommodation.id) {
           sel.value = day.accommodation.id;
+          onAccommodationChange(d); // populate room type dropdown
           const roomsEl = document.getElementById(`accommodation-rooms-${d}`);
           if (roomsEl) roomsEl.value = day.accommodation.rooms || 1;
+          if (day.accommodation.room_type_id) {
+            const roomTypeSel = document.getElementById(`room-type-${d}`);
+            if (roomTypeSel) roomTypeSel.value = day.accommodation.room_type_id;
+          }
         }
       }
     });
@@ -568,10 +625,17 @@ function renderSummary() {
     const accSel = document.getElementById(`accommodation-${d}`);
     if (accSel && accSel.value) {
       const rooms = document.getElementById(`accommodation-rooms-${d}`)?.value || 1;
-      const name = accSel.value === 'custom'
-        ? (document.getElementById(`custom-accommodation-name-${d}`)?.value || '自訂住宿')
-        : accSel.options[accSel.selectedIndex].textContent.split('（')[0];
-      rows += `<div class="itin-row"><span class="itin-row-icon">🏨</span><span>住宿：${name}（${rooms} 房）</span></div>`;
+      let accName, roomTypeInfo = '';
+      if (accSel.value === 'custom') {
+        accName = document.getElementById(`custom-accommodation-name-${d}`)?.value || '自訂住宿';
+      } else {
+        accName = accSel.options[accSel.selectedIndex].textContent.split('（')[0];
+        const roomTypeSel = document.getElementById(`room-type-${d}`);
+        if (roomTypeSel && roomTypeSel.value) {
+          roomTypeInfo = ` — ${roomTypeSel.options[roomTypeSel.selectedIndex].textContent.split('（')[0]}`;
+        }
+      }
+      rows += `<div class="itin-row"><span class="itin-row-icon">🏨</span><span>住宿：${accName}${roomTypeInfo}（${rooms} 房）</span></div>`;
     }
 
     if (rows) {

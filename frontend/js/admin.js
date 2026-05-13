@@ -101,6 +101,7 @@ async function loadData(key) {
 }
 
 function renderTable(key, data) {
+  if (key === 'accommodations') { renderAccommodationsTree(data); return; }
   const cfg = TABS[key];
   const container = document.getElementById('admin-content');
   container.innerHTML = `
@@ -118,14 +119,77 @@ function renderTable(key, data) {
               <td>
                 <div class="flex gap-2">
                   <button class="btn btn-outline btn-sm" onclick='openModal("${key}", ${JSON.stringify(r)})'>編輯</button>
-                  ${key === 'accommodations'
-                    ? `<button class="btn btn-warning btn-sm" onclick='openRooms(${r.id},"${r.name}")'>房型</button>`
-                    : ''}
                   <button class="btn btn-danger btn-sm" onclick="deleteItem('${key}', ${r.id})">停用</button>
                 </div>
               </td>
             </tr>`).join('')}
         </tbody>
+      </table>
+    </div>`;
+}
+
+function renderAccommodationsTree(data) {
+  const container = document.getElementById('admin-content');
+  let rowsHTML = '';
+
+  data.forEach(acc => {
+    const rooms = acc.rooms || [];
+    rowsHTML += `
+      <tr class="acc-main-row">
+        <td><strong>${acc.name}</strong></td>
+        <td>${acc.type}</td>
+        <td>${acc.location}</td>
+        <td>$${fmt(acc.price_per_room_night)}</td>
+        <td>${rooms.length} 間</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" onclick='openModal("accommodations", ${JSON.stringify(acc).replace(/'/g, "&#39;")})'>編輯</button>
+            <button class="btn btn-primary btn-sm" onclick="openRoomModal(null, ${acc.id})">＋ 房型</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteItem('accommodations', ${acc.id})">停用</button>
+          </div>
+        </td>
+      </tr>`;
+
+    if (rooms.length === 0) {
+      rowsHTML += `
+        <tr class="acc-room-row">
+          <td colspan="6" style="padding-left:28px;font-size:0.83rem;color:var(--muted);background:var(--bg)">
+            <span style="font-family:monospace;margin-right:4px">└</span>尚未設定房型，點「＋ 房型」新增
+          </td>
+        </tr>`;
+    } else {
+      rooms.forEach((r, i) => {
+        const isLast = i === rooms.length - 1;
+        const conn = isLast ? '└' : '├';
+        rowsHTML += `
+          <tr class="acc-room-row">
+            <td colspan="3" style="padding-left:28px;font-size:0.88rem;background:var(--bg)">
+              <span style="font-family:monospace;color:var(--muted);margin-right:6px">${conn}</span>
+              <span class="room-badge">${r.room_type}</span>
+              ${r.room_number ? `<span style="margin-left:6px;color:var(--muted);font-size:0.82rem">房號：${r.room_number}</span>` : ''}
+            </td>
+            <td style="background:var(--bg);font-size:0.88rem"><strong style="color:var(--ocean)">$${fmt(r.price)}/晚</strong></td>
+            <td style="background:var(--bg)"></td>
+            <td style="background:var(--bg)">
+              <div class="flex gap-2">
+                <button class="btn btn-outline btn-sm" onclick='openRoomModal(${JSON.stringify(r).replace(/'/g, "&#39;")}, ${acc.id})'>編輯</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteRoom(${r.id})">停用</button>
+              </div>
+            </td>
+          </tr>`;
+      });
+    }
+  });
+
+  container.innerHTML = `
+    <div class="flex-between mb-2">
+      <div class="page-title" style="margin:0;font-size:1.1rem">住宿清單（${data.length} 筆）</div>
+      <button class="btn btn-primary" onclick="openModal('accommodations')">＋ 新增住宿</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>名稱</th><th>類型</th><th>地點</th><th>基本價/晚</th><th>房型數</th><th>操作</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
       </table>
     </div>`;
 }
@@ -190,48 +254,10 @@ async function deleteItem(key, id) {
 }
 
 // ── Room Management ───────────────────────────────────────────────────────────
-let _currentAccId = null, _currentAccName = '';
+let _currentAccId = null;
 
-async function openRooms(accId, accName) {
-  _currentAccId = accId; _currentAccName = accName;
-  await renderRoomsPanel();
-}
-
-async function renderRoomsPanel() {
-  const rooms = await apiFetch(`/api/accommodations/${_currentAccId}/rooms`);
-  const container = document.getElementById('admin-content');
-  container.innerHTML = `
-    <div class="flex-between mb-2">
-      <div>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('accommodations')" style="margin-right:8px">← 返回住宿清單</button>
-        <span class="page-title" style="font-size:1.1rem;display:inline">🏨 ${_currentAccName} — 房型管理</span>
-      </div>
-      <button class="btn btn-primary" onclick="openRoomModal()">＋ 新增房型</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="data-table">
-        <thead><tr><th>房型</th><th>房號</th><th>每晚價格</th><th>操作</th></tr></thead>
-        <tbody>
-          ${rooms.length === 0
-            ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">尚未設定房型，點右上角新增</td></tr>`
-            : rooms.map(r => `
-              <tr>
-                <td><strong>${r.room_type}</strong></td>
-                <td>${r.room_number || '—'}</td>
-                <td>$${fmt(r.price)} / 晚</td>
-                <td>
-                  <div class="flex gap-2">
-                    <button class="btn btn-outline btn-sm" onclick='openRoomModal(${JSON.stringify(r)})'>編輯</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRoom(${r.id})">停用</button>
-                  </div>
-                </td>
-              </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-function openRoomModal(existing = null) {
+function openRoomModal(existing = null, accId = null) {
+  if (accId !== null) _currentAccId = accId;
   const isEdit = !!existing;
   document.getElementById('modal-title').textContent = isEdit ? '編輯房型' : '新增房型';
   const TYPES = ['單人房', '雙人房', '雙床房', '三人房', '四人房', '六人房', '通舖', '套房'];
@@ -266,7 +292,8 @@ function openRoomModal(existing = null) {
         await apiFetch(`/api/accommodations/${_currentAccId}/rooms`, { method: 'POST', body: JSON.stringify(payload) });
         toast('房型已新增');
       }
-      closeModal(); renderRoomsPanel();
+      closeModal();
+      loadData('accommodations');
     } catch (e) { toast('儲存失敗：' + e.message, 'error'); }
   };
   document.getElementById('modal-overlay').classList.add('open');
@@ -276,7 +303,8 @@ async function deleteRoom(roomId) {
   if (!confirm('確定要停用這個房型嗎？')) return;
   try {
     await apiFetch(`/api/accommodations/rooms/${roomId}`, { method: 'DELETE' });
-    toast('已停用'); renderRoomsPanel();
+    toast('已停用');
+    loadData('accommodations');
   } catch (e) { toast('操作失敗', 'error'); }
 }
 
