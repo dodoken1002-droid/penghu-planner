@@ -443,6 +443,45 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .acc-room-row td { border-top: none !important; padding-top: 2px; padding-bottom: 4px; }
 .acc-room-row + .acc-main-row td { border-top: 1px solid var(--border) !important; }
 
+/* ── Planner layout (responsive 2-col) ── */
+.planner-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Nav subtitle ── */
+.nav-subtitle {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  margin-top: 2px;
+  padding-left: 2px;
+}
+
+/* ── Nav user chip & logout ── */
+.nav-user-chip {
+  color: rgba(255,255,255,0.9);
+  font-size: 0.82rem;
+  padding: 5px 10px;
+  border-left: 1px solid rgba(255,255,255,0.3);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.nav-user-name { font-weight: 600; }
+.nav-user-role { font-size: 0.72rem; opacity: 0.75; }
+.nav-logout-btn {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.4);
+  color: white;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-left: 4px;
+  font-family: inherit;
+}
+
 /* ── Print ── */
 @media print {
   .nav, .no-print { display: none !important; }
@@ -451,10 +490,91 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .card { box-shadow: none; }
 }
 
-/* ── Responsive ── */
+/* ── Responsive: Tablet (≤1100px) ── */
+@media (max-width: 1100px) {
+  .planner-layout { grid-template-columns: 300px 1fr; gap: 16px; }
+}
+
+/* ── Responsive: Mobile (≤768px) ── */
 @media (max-width: 768px) {
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-  .page { padding: 16px; }
+  /* Grid */
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+
+  /* Page */
+  .page { padding: 12px; }
+  .page-title { font-size: 1.2rem; margin-bottom: 14px; }
+
+  /* Nav */
+  .nav {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .nav-subtitle { display: none; }
+  .nav-brand { font-size: 1rem; }
+  .nav-links { gap: 2px; flex-wrap: wrap; }
+  .nav-links a { padding: 5px 10px; font-size: 0.8rem; }
+  .nav-user-chip { display: none; }
+  .nav-logout-btn { padding: 4px 8px; font-size: 0.74rem; }
+
+  /* Planner layout — stack vertically */
+  .planner-layout { grid-template-columns: 1fr; }
+
+  /* Card */
+  .card { padding: 14px; }
+
+  /* Admin tabs — wrap */
+  .admin-tabs { flex-wrap: wrap; gap: 4px; }
+  .admin-tab { font-size: 0.82rem; padding: 7px 12px; }
+
+  /* Day panel */
+  .day-panel { padding: 12px; }
+  .day-tab { padding: 7px 14px; font-size: 0.84rem; }
+
+  /* Item rows */
+  .item-row { grid-template-columns: 1fr auto; }
+  .item-row.meal-row { grid-template-columns: 1fr auto; }
+
+  /* Action buttons in tables */
+  .actions, .flex.gap-2 { flex-wrap: wrap; gap: 4px; }
+
+  /* Trips table */
+  .trips-table { font-size: 0.8rem; }
+  .trips-table td, .trips-table th { padding: 7px 8px; }
+
+  /* Modal */
+  .modal { max-width: calc(100vw - 24px); padding: 18px; }
+  .modal-overlay { padding: 12px; }
+
+  /* Flex between */
+  .flex-between { flex-wrap: wrap; gap: 8px; }
+
+  /* Quote */
+  .quote-header { padding: 20px 16px; }
+  .quote-header h1 { font-size: 1.3rem; letter-spacing: 2px; }
+  .quote-body { padding: 14px; }
+  .quote-footer { padding: 12px 14px; }
+
+  /* Cost panel */
+  .cost-per-person { font-size: 1.1rem; }
+
+  /* Search bar in trips */
+  #search-input { max-width: 100% !important; }
+  #filter-status { max-width: 100% !important; }
+}
+
+/* ── Responsive: Small mobile (≤480px) ── */
+@media (max-width: 480px) {
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .nav-links a { padding: 4px 8px; font-size: 0.76rem; }
+  .btn-lg { padding: 10px 18px; font-size: 0.92rem; }
+  .trips-table th:nth-child(3),
+  .trips-table td:nth-child(3) { display: none; } /* 隱藏出發日期欄 on very small */
+  .day-tab { padding: 6px 10px; font-size: 0.8rem; }
+  .quote-header h1 { font-size: 1.1rem; }
 }
 
 /* ── Itinerary Summary ── */

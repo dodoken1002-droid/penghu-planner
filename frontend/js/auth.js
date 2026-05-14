@@ -32,14 +32,11 @@ function _updateNav(user) {
   const navLinks = document.querySelector('.nav-links');
   if (navLinks && !document.getElementById('nav-user-chip')) {
     navLinks.insertAdjacentHTML('beforeend', `
-      <span id="nav-user-chip" style="color:rgba(255,255,255,0.9);font-size:0.82rem;
-        padding:5px 10px;border-left:1px solid rgba(255,255,255,0.3);margin-left:4px;">
-        👤 ${user.display_name || user.username}
-        <span style="font-size:0.72rem;opacity:0.75">(${ROLE_LABEL[user.role]||user.role})</span>
+      <span id="nav-user-chip" class="nav-user-chip">
+        👤 <span class="nav-user-name">${user.display_name || user.username}</span>
+        <span class="nav-user-role">(${ROLE_LABEL[user.role]||user.role})</span>
       </span>
-      <button onclick="authLogout()" style="background:rgba(255,255,255,0.15);border:1px solid
-        rgba(255,255,255,0.4);color:white;border-radius:5px;padding:4px 10px;font-size:0.78rem;
-        cursor:pointer;margin-left:4px;">登出</button>
+      <button onclick="authLogout()" class="nav-logout-btn">登出</button>
     `);
   }
 }
