@@ -191,6 +191,27 @@ class User(db.Model):
                 'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else ''}
 
 
+class TripTemplate(db.Model):
+    __tablename__ = 'trip_templates'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    days = db.Column(db.Integer, default=2)
+    description = db.Column(db.Text, default='')
+    itinerary_data = db.Column(db.Text, default='{}')
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(50), default='')
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'name': self.name, 'days': self.days,
+            'description': self.description,
+            'itinerary_data': json.loads(self.itinerary_data) if self.itinerary_data else {},
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
+            'created_by': self.created_by,
+        }
+
+
 class ActivityLog(db.Model):
     __tablename__ = 'activity_logs'
     id = db.Column(db.Integer, primary_key=True)
@@ -207,11 +228,12 @@ class ActivityLog(db.Model):
                         'update': '修改', 'delete': '停用'}
         TYPE_LABEL = {'attraction': '景點', 'restaurant': '餐廳',
                       'transportation': '交通', 'accommodation': '住宿',
-                      'room': '房型', 'trip': '行程', 'user': '帳號', 'system': '系統'}
+                      'room': '房型', 'trip': '行程', 'user': '帳號', 'system': '系統',
+                      'template': '範本'}
         return {
             'id': self.id, 'username': self.username,
             'action': ACTION_LABEL.get(self.action, self.action),
-            'target_type': TYPE_LABEL.get(self.target_type, self.target_type),
+            'target_type': TYPE_LABEL.get(self.target_type, self.target_type),  # noqa
             'target_name': self.target_name,
             'ip_address': self.ip_address,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else '',
@@ -671,3 +693,82 @@ def delete_trip(id):
     db.session.delete(trip)
     db.session.commit()
     return jsonify({'success': True})
+
+
+# ─── Trip Copy ────────────────────────────────────────────────────────────────
+
+@app.route('/api/trips/<int:id>/copy', methods=['POST'])
+@require_role('admin')
+def copy_trip(id):
+    src = db.get_or_404(Trip, id)
+    copy = Trip(
+        customer_name=src.customer_name, customer_phone=src.customer_phone,
+        customer_email=src.customer_email, trip_date=src.trip_date,
+        return_date=src.return_date, days=src.days, adults=src.adults,
+        children=src.children, seniors=src.seniors, total_people=src.total_people,
+        transport_cost=src.transport_cost, accommodation_cost=src.accommodation_cost,
+        activity_cost=src.activity_cost, meal_cost=src.meal_cost,
+        other_cost=src.other_cost, cost_subtotal=src.cost_subtotal,
+        service_fee=src.service_fee, markup_percent=0,
+        final_quote=src.final_quote, quote_per_person=src.quote_per_person,
+        status='草稿', notes=src.notes, itinerary_data=src.itinerary_data,
+    )
+    db.session.add(copy)
+    log_activity('create', 'trip', f'複製自 #{id} {src.customer_name}')
+    db.session.commit()
+    return jsonify(copy.to_dict()), 201
+
+
+# ─── Templates API ────────────────────────────────────────────────────────────
+
+@app.route('/api/templates', methods=['GET'])
+@require_role('admin', 'editor', 'viewer')
+def get_templates():
+    templates = TripTemplate.query.filter_by(is_active=True).order_by(TripTemplate.created_at.desc()).all()
+    return jsonify([t.to_dict() for t in templates])
+
+
+@app.route('/api/templates', methods=['POST'])
+@require_role('admin', 'editor')
+def create_template():
+    d = request.json or {}
+    tpl = TripTemplate(
+        name=d.get('name', '未命名範本'), days=d.get('days', 2),
+        description=d.get('description', ''),
+        itinerary_data=json.dumps(d.get('itinerary_data', {}), ensure_ascii=False),
+        created_by=session.get('username', ''),
+    )
+    db.session.add(tpl)
+    log_activity('create', 'template', tpl.name)
+    db.session.commit()
+    return jsonify(tpl.to_dict()), 201
+
+
+@app.route('/api/templates/<int:id>', methods=['DELETE'])
+@require_role('admin', 'editor')
+def delete_template(id):
+    tpl = db.get_or_404(TripTemplate, id)
+    tpl.is_active = False
+    log_activity('delete', 'template', tpl.name)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ─── Customer Search ──────────────────────────────────────────────────────────
+
+@app.route('/api/customers/search', methods=['GET'])
+@require_role('admin', 'editor', 'viewer')
+def search_customers():
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    trips = Trip.query.filter(
+        db.or_(Trip.customer_name.ilike(f'%{q}%'), Trip.customer_phone.ilike(f'%{q}%'))
+    ).order_by(Trip.created_at.desc()).limit(50).all()
+    seen, customers = set(), []
+    for t in trips:
+        key = (t.customer_name, t.customer_phone)
+        if key not in seen and (t.customer_name or t.customer_phone):
+            seen.add(key)
+            customers.append({'name': t.customer_name, 'phone': t.customer_phone, 'email': t.customer_email})
+    return jsonify(customers[:10])

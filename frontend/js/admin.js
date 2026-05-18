@@ -77,6 +77,7 @@ function buildTabs() {
   let tabs = Object.entries(TABS).map(([key, t]) =>
     `<button class="admin-tab" id="tab-${key}" onclick="switchTab('${key}')">${t.label}管理</button>`
   ).join('');
+  tabs += `<button class="admin-tab" id="tab-templates" onclick="switchTab('templates')">📋 範本管理</button>`;
   if (isAdmin) {
     tabs += `<button class="admin-tab" id="tab-users" onclick="switchTab('users')">👥 帳號管理</button>`;
     tabs += `<button class="admin-tab" id="tab-logs" onclick="switchTab('logs')">📋 操作記錄</button>`;
@@ -88,8 +89,9 @@ async function switchTab(key) {
   currentTab = key;
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`tab-${key}`)?.classList.add('active');
-  if (key === 'users') { await loadUsers(); return; }
-  if (key === 'logs')  { await loadLogs();  return; }
+  if (key === 'users')     { await loadUsers();     return; }
+  if (key === 'logs')      { await loadLogs();      return; }
+  if (key === 'templates') { await loadTemplates(); return; }
   await loadData(key);
 }
 
@@ -446,6 +448,42 @@ function filterLogs() {
   rows.forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
+}
+
+// ── Templates Management ──────────────────────────────────────────────────────
+async function loadTemplates() {
+  const templates = await apiFetch('/api/templates');
+  const container = document.getElementById('admin-content');
+  container.innerHTML = `
+    <div class="flex-between mb-2">
+      <div class="page-title" style="margin:0;font-size:1.1rem">📋 行程範本（${templates.length} 個）</div>
+    </div>
+    ${templates.length === 0
+      ? '<div style="text-align:center;padding:48px;color:var(--muted)">尚無範本<br><small style="margin-top:6px;display:block">請在「規劃行程」頁完成行程後，點「另存為範本」建立</small></div>'
+      : `<div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>範本名稱</th><th>天數</th><th>說明</th><th>建立者</th><th>建立時間</th><th>操作</th></tr></thead>
+            <tbody>
+              ${templates.map(t => `
+                <tr>
+                  <td><strong>${t.name}</strong></td>
+                  <td>${t.days} 天 ${t.days - 1} 夜</td>
+                  <td style="color:var(--muted);font-size:0.85rem">${t.description || '—'}</td>
+                  <td>${t.created_by || '—'}</td>
+                  <td style="font-size:0.82rem;color:var(--muted)">${t.created_at}</td>
+                  <td><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})">刪除</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}`;
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('確定要刪除這個範本嗎？')) return;
+  try {
+    await apiFetch(`/api/templates/${id}`, { method: 'DELETE' });
+    toast('已刪除'); loadTemplates();
+  } catch (e) { toast('操作失敗', 'error'); }
 }
 
 window.addEventListener('DOMContentLoaded', init);
