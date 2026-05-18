@@ -31,11 +31,17 @@
         <div class="card-title">👤 客戶資料</div>
         <div class="form-group">
           <label class="form-label">客戶姓名 <span class="required">*</span></label>
-          <input id="customer_name" class="form-control" placeholder="王小明">
+          <div style="position:relative">
+            <input id="customer_name" class="form-control" placeholder="王小明" autocomplete="off">
+            <div id="suggest-name" class="customer-suggest" style="display:none"></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">聯絡電話</label>
-          <input id="customer_phone" class="form-control" placeholder="0912-345-678">
+          <div style="position:relative">
+            <input id="customer_phone" class="form-control" placeholder="0912-345-678" autocomplete="off">
+            <div id="suggest-phone" class="customer-suggest" style="display:none"></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
@@ -153,13 +159,19 @@
         <button class="btn btn-outline btn-lg" onclick="saveTrip('草稿')" style="width:100%">
           💾 儲存草稿
         </button>
+        <button class="btn btn-outline btn-lg" onclick="saveAsTemplate()" style="width:100%;border-color:var(--warning);color:var(--warning)">
+          📋 另存為範本
+        </button>
       </div>
     </div>
 
     <!-- ── Right: Day-by-day itinerary ── -->
     <div>
       <div class="card">
-        <div class="card-title">🗺️ 每日行程規劃</div>
+        <div class="card-title" style="justify-content:space-between">
+          <span>🗺️ 每日行程規劃</span>
+          <button class="btn btn-outline btn-sm" onclick="openTemplatePicker()" style="font-weight:600">📋 套用範本</button>
+        </div>
         <div id="day-tabs" class="day-tabs"></div>
         <div id="day-panels"></div>
 
@@ -171,6 +183,17 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Template Picker Modal -->
+<div class="modal-overlay" id="template-modal-overlay" onclick="if(event.target===this)closeTemplatePicker()">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">📋 選擇行程範本</div>
+    <div id="template-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTemplatePicker()">取消</button>
+    </div>
   </div>
 </div>
 

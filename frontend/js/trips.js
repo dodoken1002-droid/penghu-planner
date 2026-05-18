@@ -42,6 +42,7 @@ function renderTrips() {
           <div class="actions">
             <a href="/quote?id=${t.id}" class="btn btn-primary btn-sm">報價單</a>
             <a href="/?id=${t.id}" class="btn btn-outline btn-sm">編輯</a>
+            <button class="btn btn-outline btn-sm" onclick="copyTrip(${t.id})" style="border-color:var(--warning);color:var(--warning)">複製</button>
             <button class="btn btn-danger btn-sm" onclick="deleteTrip(${t.id})">刪除</button>
           </div>
         </td>
@@ -58,6 +59,14 @@ function renderTrips() {
   if (se('stat-quoting'))   se('stat-quoting').textContent   = quoting;
   if (se('stat-confirmed')) se('stat-confirmed').textContent = confirmed;
   if (se('stat-revenue'))   se('stat-revenue').textContent   = '$' + fmt(revenue);
+}
+
+async function copyTrip(id) {
+  try {
+    const newTrip = await apiFetch(`/api/trips/${id}/copy`, { method: 'POST' });
+    toast(`✅ 已複製為新行程 #${newTrip.id}，即將開啟編輯…`);
+    setTimeout(() => { window.location.href = `/?id=${newTrip.id}`; }, 1000);
+  } catch (e) { toast('複製失敗', 'error'); }
 }
 
 async function deleteTrip(id) {

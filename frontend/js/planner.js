@@ -2,6 +2,8 @@
 let REF = { attractions: [], restaurants: [], transportation: [], accommodations: [] };
 let editingTripId = null;
 let currentDays = 2;
+let _customerResults = [];
+let _suggestTimer = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
@@ -20,6 +22,7 @@ async function init() {
 
   populateTransportSelect();
   bindEvents();
+  setupCustomerAutocomplete();
 
   // Check if editing existing trip
   const params = new URLSearchParams(location.search);
@@ -353,12 +356,9 @@ function calcCosts() {
   return { transportCost, accommodationCost, activityCost, mealCost, other, serviceFee, subtotal, final, perPerson, adults, children, seniors };
 }
 
-// ── Collect form data ─────────────────────────────────────────────────────────
-function collectData(status) {
-  const costs = calcCosts();
-  const days = currentDays;
-
-  const itinerary = { days: [] };
+// ── Collect itinerary (shared by collectData & saveAsTemplate) ────────────────
+function collectItinerary(days) {
+  const itin = { days: [] };
   for (let d = 1; d <= days; d++) {
     const day = { day: d, am_attractions: [], pm_attractions: [], meals: {}, accommodation: null };
 
@@ -367,7 +367,6 @@ function collectData(status) {
       if (!container) return;
       container.querySelectorAll('select').forEach(sel => {
         if (!sel.value || sel.value === 'custom') return;
-        const opt = sel.options[sel.selectedIndex];
         const found = REF.attractions.find(a => a.id == sel.value);
         if (found) day[`${slot}_attractions`].push({ id: found.id, name: found.name, price: found.price, location: found.location });
       });
@@ -402,49 +401,47 @@ function collectData(status) {
             roomType = roomOpt.textContent.split('（')[0];
             roomPrice = parseInt(roomOpt.dataset.price) || roomPrice;
           }
-          day.accommodation = {
-            id: found.id, name: found.name, rooms, price: roomPrice,
-            room_type_id: roomTypeId, room_type: roomType,
-          };
+          day.accommodation = { id: found.id, name: found.name, rooms, price: roomPrice, room_type_id: roomTypeId, room_type: roomType };
         }
       } else if (accSel.value === 'custom') {
         day.accommodation = {
           id: null,
           name: document.getElementById(`custom-accommodation-name-${d}`)?.value || '自訂住宿',
-          rooms,
-          price: parseInt(document.getElementById(`custom-accommodation-price-${d}`)?.value) || 0,
+          rooms, price: parseInt(document.getElementById(`custom-accommodation-price-${d}`)?.value) || 0,
           room_type_id: null, room_type: null,
         };
       }
     }
-    itinerary.days.push(day);
+    itin.days.push(day);
   }
-
   const transportSel = document.getElementById('transport_id');
-  const transportOpt = transportSel.options[transportSel.selectedIndex];
-  if (transportOpt && transportSel.value) {
+  if (transportSel?.value) {
     const found = REF.transportation.find(t => t.id == transportSel.value);
-    if (found) itinerary.transport = { id: found.id, name: found.name };
+    if (found) itin.transport = { id: found.id, name: found.name };
   }
+  return itin;
+}
 
+// ── Collect form data ─────────────────────────────────────────────────────────
+function collectData(status) {
+  const costs = calcCosts();
   return {
     customer_name: document.getElementById('customer_name').value,
     customer_phone: document.getElementById('customer_phone').value,
     customer_email: document.getElementById('customer_email').value,
     trip_date: document.getElementById('trip_date').value,
     return_date: document.getElementById('return_date').value,
-    days, adults: parseInt(document.getElementById('adults').value) || 0,
+    days: currentDays,
+    adults: parseInt(document.getElementById('adults').value) || 0,
     children: parseInt(document.getElementById('children').value) || 0,
     seniors: parseInt(document.getElementById('seniors').value) || 0,
-    transport_cost: costs.transportCost,
-    accommodation_cost: costs.accommodationCost,
-    activity_cost: costs.activityCost,
-    meal_cost: costs.mealCost,
+    transport_cost: costs.transportCost, accommodation_cost: costs.accommodationCost,
+    activity_cost: costs.activityCost, meal_cost: costs.mealCost,
     other_cost: costs.other,
     service_fee: parseInt(document.getElementById('service_fee').value) || 0,
     notes: document.getElementById('notes').value,
     status: status || '草稿',
-    itinerary_data: itinerary,
+    itinerary_data: collectItinerary(currentDays),
   };
 }
 
@@ -644,6 +641,145 @@ function renderSummary() {
   }
 
   el.innerHTML = html || '<div class="itin-empty">尚未選擇任何行程項目</div>';
+}
+
+// ── 回頭客自動帶入 ────────────────────────────────────────────────────────────
+function setupCustomerAutocomplete() {
+  ['name', 'phone'].forEach(field => {
+    const input = document.getElementById(`customer_${field}`);
+    const suggest = document.getElementById(`suggest-${field}`);
+    if (!input || !suggest) return;
+    input.addEventListener('input', () => {
+      clearTimeout(_suggestTimer);
+      _suggestTimer = setTimeout(() => fetchCustomerSuggestions(input.value, suggest), 250);
+    });
+    input.addEventListener('blur', () => setTimeout(() => { suggest.style.display = 'none'; }, 200));
+  });
+}
+
+async function fetchCustomerSuggestions(q, suggestEl) {
+  if (q.length < 2) { suggestEl.style.display = 'none'; return; }
+  try {
+    const results = await apiFetch(`/api/customers/search?q=${encodeURIComponent(q)}`);
+    _customerResults = results;
+    if (!results.length) { suggestEl.style.display = 'none'; return; }
+    suggestEl.innerHTML = results.map((c, i) => `
+      <div class="customer-suggest-item" onmousedown="fillCustomer(${i})">
+        <strong>${c.name || '—'}</strong>
+        <small>${c.phone || ''}${c.email ? '　' + c.email : ''}</small>
+      </div>`).join('');
+    suggestEl.style.display = 'block';
+  } catch (e) { suggestEl.style.display = 'none'; }
+}
+
+function fillCustomer(idx) {
+  const c = _customerResults[idx];
+  if (!c) return;
+  document.getElementById('customer_name').value = c.name || '';
+  document.getElementById('customer_phone').value = c.phone || '';
+  document.getElementById('customer_email').value = c.email || '';
+  document.getElementById('suggest-name').style.display = 'none';
+  document.getElementById('suggest-phone').style.display = 'none';
+}
+
+// ── 行程範本 ──────────────────────────────────────────────────────────────────
+async function openTemplatePicker() {
+  const overlay = document.getElementById('template-modal-overlay');
+  const listEl = document.getElementById('template-list');
+  overlay.classList.add('open');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">載入中…</div>';
+  try {
+    const templates = await apiFetch('/api/templates');
+    if (!templates.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">尚未建立任何範本<br><small>完成行程規劃後，點「另存為範本」即可建立</small></div>';
+      return;
+    }
+    listEl.innerHTML = templates.map(t => `
+      <div class="template-card" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+        <div class="template-card-name">${t.name}</div>
+        <div class="template-card-meta">${t.days} 天 ${t.days - 1} 夜${t.description ? '　' + t.description : ''}</div>
+        <div class="template-card-by">由 ${t.created_by || '系統'} 建立・${t.created_at}</div>
+      </div>`).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="color:var(--danger);padding:20px">載入失敗</div>';
+  }
+}
+
+function closeTemplatePicker() {
+  document.getElementById('template-modal-overlay').classList.remove('open');
+}
+
+function applyTemplate(tpl) {
+  if (!confirm(`套用範本「${tpl.name}」？目前填入的行程內容將被覆蓋。`)) return;
+  closeTemplatePicker();
+
+  const days = tpl.days || 2;
+  const daysEl = document.getElementById('days');
+  const maxDay = Math.max(...Array.from(daysEl.options).map(o => parseInt(o.value)));
+  if (days > maxDay) {
+    for (let d = maxDay + 1; d <= days; d++) {
+      const o = document.createElement('option');
+      o.value = d; o.textContent = `${d} 天 ${d - 1} 夜`;
+      daysEl.appendChild(o);
+    }
+  }
+  daysEl.value = days;
+  buildDayTabs(days);
+
+  const itin = tpl.itinerary_data || {};
+  if (itin.transport) {
+    const tSel = document.getElementById('transport_id');
+    tSel.value = itin.transport.id || '';
+    const opt = tSel.options[tSel.selectedIndex];
+    const unit = opt?.dataset?.unit || '';
+    const qtyRow = document.getElementById('transport-qty-row');
+    if (qtyRow) qtyRow.style.display = unit && !unit.includes('人') ? 'flex' : 'none';
+  }
+  if (itin.days) {
+    itin.days.forEach(day => {
+      const d = day.day;
+      day.am_attractions?.forEach(a => addAttractionRow(d, 'am', a.id));
+      day.pm_attractions?.forEach(a => addAttractionRow(d, 'pm', a.id));
+      ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+        if (day.meals?.[meal]?.id) {
+          const sel = document.getElementById(`${meal}-${d}`);
+          if (sel) sel.value = day.meals[meal].id;
+        }
+      });
+      if (day.accommodation?.id) {
+        const sel = document.getElementById(`accommodation-${d}`);
+        if (sel) {
+          sel.value = day.accommodation.id;
+          onAccommodationChange(d);
+          const roomsEl = document.getElementById(`accommodation-rooms-${d}`);
+          if (roomsEl) roomsEl.value = day.accommodation.rooms || 1;
+          if (day.accommodation.room_type_id) {
+            const roomTypeSel = document.getElementById(`room-type-${d}`);
+            if (roomTypeSel) roomTypeSel.value = day.accommodation.room_type_id;
+          }
+        }
+      }
+    });
+  }
+  calcCosts();
+  toast(`✅ 已套用範本「${tpl.name}」`);
+}
+
+async function saveAsTemplate() {
+  const name = prompt('請輸入範本名稱（例：3天2夜標準行程）：');
+  if (!name?.trim()) return;
+  const desc = prompt('範本說明（可留空，按確定繼續）：') ?? '';
+  try {
+    await apiFetch('/api/templates', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: name.trim(), days: currentDays,
+        description: desc.trim(),
+        itinerary_data: collectItinerary(currentDays),
+      }),
+    });
+    toast('✅ 已儲存為範本');
+  } catch (e) { toast('❌ 儲存失敗：' + e.message, 'error'); }
 }
 
 window.addEventListener('DOMContentLoaded', init);
