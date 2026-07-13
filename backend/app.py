@@ -892,5 +892,6 @@ def search_customers():
             customers.append({'name': t.customer_name, 'phone': t.customer_phone, 'email': t.customer_email})
     return jsonify(customers[:10])
 
-
-
+# Register Excel group-intake and operations APIs after core models/routes exist.
+from backend.group_import import register_group_import
+TripOperation = register_group_import(app, db, Trip, require_role, log_activity)
