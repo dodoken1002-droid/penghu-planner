@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -57,6 +59,12 @@
         <option value="確認">確認</option>
         <option value="取消">取消</option>
       </select>
+      <select id="filter-booking" class="form-control" style="max-width:170px">
+        <option value="">全部出團確認</option>
+        <option value="pending">待確認</option>
+        <option value="partial">部分完成</option>
+        <option value="complete">全部完成</option>
+      </select>
     </div>
 
     <div style="overflow-x:auto">
@@ -70,14 +78,28 @@
             <th>人數</th>
             <th>成本</th>
             <th>報價</th>
+            <th>出團確認</th>
             <th>狀態</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody id="trips-tbody">
-          <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">載入中…</td></tr>
+          <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)">載入中…</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="booking-modal-overlay">
+  <div class="modal booking-check-modal">
+    <div class="modal-title">✅ 出團前預訂確認</div>
+    <div class="booking-trip-label" id="booking-trip-label"></div>
+    <p class="booking-help">請逐項確認供應商已完成預訂；備註可填寫訂位編號、聯絡窗口或待處理事項。</p>
+    <div id="booking-check-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeBookingChecklist()">取消</button>
+      <button class="btn btn-primary" id="save-booking-checks" onclick="saveBookingChecklist()">儲存確認進度</button>
     </div>
   </div>
 </div>
@@ -87,3 +109,6 @@
 <script src="/js/trips.js"></script>
 </body>
 </html>
+
+
+
