@@ -5,14 +5,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>澎湖旅遊規劃器 — 所有報價</title>
+<title>澎湖旅遊規畫器 — 所有報價</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
 <nav class="nav">
   <div>
-    <a class="nav-brand" href="/">🌊 澎湖旅遊規劃器</a>
+    <a class="nav-brand" href="/">🌊 澎湖旅遊規畫器</a>
     <div class="nav-subtitle">潮旅國際旅行社｜交觀乙第1864號｜澎品保第0188號</div>
   </div>
   <div class="nav-links">
@@ -25,7 +25,12 @@
 <div class="page">
   <div class="flex-between" style="margin-bottom:20px">
     <div class="page-title" style="margin:0">📋 所有報價紀錄</div>
-    <a href="/" class="btn btn-primary">＋ 規劃新行程</a>
+    <div class="excel-actions">
+      <button type="button" id="excel-import-button" class="btn btn-success" onclick="openImportModal()">📥 匯入接團 Excel</button>
+      <a href="/api/trips/export/template" class="btn btn-outline">📄 下載標準範本</a>
+      <a href="/api/trips/export" class="btn btn-outline">📤 匯出目前資料</a>
+      <a href="/" class="btn btn-primary">＋ 規劃新行程</a>
+    </div>
   </div>
 
   <!-- Stats row -->
@@ -107,7 +112,7 @@
 <script src="/js/app.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/trips.js"></script>
-<script src="/js/group-import.js"></script>
+<script src="/js/group-import.js?v=2"></script>
 </body>
 </html>
 
