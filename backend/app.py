@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -145,6 +147,10 @@ class Trip(db.Model):
     status = db.Column(db.String(20), default='草稿')
     notes = db.Column(db.Text, default='')
     itinerary_data = db.Column(db.Text, default='{}')
+    booking_checks = db.relationship(
+        'TripBookingCheck', backref='trip', cascade='all, delete-orphan',
+        lazy='selectin'
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -164,9 +170,69 @@ class Trip(db.Model):
             'quote_per_person': self.quote_per_person,
             'status': self.status, 'notes': self.notes,
             'itinerary_data': json.loads(self.itinerary_data) if self.itinerary_data else {},
+            'booking_summary': build_booking_summary(self.booking_checks),
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
             'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else '',
         }
+
+
+BOOKING_CHECK_CATEGORIES = {
+    'itinerary': '行程預訂',
+    'transportation': '交通／車輛',
+    'accommodation': '住宿',
+}
+
+
+class TripBookingCheck(db.Model):
+    __tablename__ = 'trip_booking_checks'
+    __table_args__ = (
+        db.UniqueConstraint('trip_id', 'category', name='uq_trip_booking_check_category'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('trips.id'), nullable=False, index=True)
+    category = db.Column(db.String(30), nullable=False)
+    is_confirmed = db.Column(db.Boolean, default=False, nullable=False)
+    note = db.Column(db.Text, default='')
+    confirmed_by = db.Column(db.String(100), default='')
+    confirmed_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'category': self.category,
+            'label': BOOKING_CHECK_CATEGORIES.get(self.category, self.category),
+            'confirmed': bool(self.is_confirmed),
+            'note': self.note or '',
+            'confirmed_by': self.confirmed_by or '',
+            'confirmed_at': self.confirmed_at.strftime('%Y-%m-%d %H:%M') if self.confirmed_at else '',
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else '',
+        }
+
+
+def build_booking_summary(checks):
+    by_category = {check.category: check for check in checks}
+    items = []
+    for category, label in BOOKING_CHECK_CATEGORIES.items():
+        check = by_category.get(category)
+        items.append(check.to_dict() if check else {
+            'category': category, 'label': label, 'confirmed': False,
+            'note': '', 'confirmed_by': '', 'confirmed_at': '', 'updated_at': '',
+        })
+
+    confirmed_count = sum(1 for item in items if item['confirmed'])
+    if confirmed_count == len(items):
+        status = 'complete'
+    elif confirmed_count:
+        status = 'partial'
+    else:
+        status = 'pending'
+    return {
+        'status': status,
+        'confirmed_count': confirmed_count,
+        'total_count': len(items),
+        'items': items,
+    }
 
 
 class User(db.Model):
@@ -229,7 +295,7 @@ class ActivityLog(db.Model):
         TYPE_LABEL = {'attraction': '景點', 'restaurant': '餐廳',
                       'transportation': '交通', 'accommodation': '住宿',
                       'room': '房型', 'trip': '行程', 'user': '帳號', 'system': '系統',
-                      'template': '範本'}
+                      'template': '範本', 'booking_check': '出團確認'}
         return {
             'id': self.id, 'username': self.username,
             'action': ACTION_LABEL.get(self.action, self.action),
@@ -695,6 +761,59 @@ def delete_trip(id):
     return jsonify({'success': True})
 
 
+# ─── Pre-departure booking checks ────────────────────────────────────────────
+
+@app.route('/api/trips/<int:id>/booking-checks', methods=['GET'])
+@require_role('admin', 'viewer')
+def get_trip_booking_checks(id):
+    trip = db.get_or_404(Trip, id)
+    return jsonify(build_booking_summary(trip.booking_checks))
+
+
+@app.route('/api/trips/<int:id>/booking-checks', methods=['PUT'])
+@require_role('admin', 'viewer')
+def update_trip_booking_checks(id):
+    trip = db.get_or_404(Trip, id)
+    payload = request.json or {}
+    requested_checks = payload.get('checks')
+    if not isinstance(requested_checks, dict):
+        return jsonify({'error': 'checks 必須是物件'}), 400
+
+    unknown = set(requested_checks) - set(BOOKING_CHECK_CATEGORIES)
+    if unknown:
+        return jsonify({'error': f'不支援的確認項目：{", ".join(sorted(unknown))}'}), 400
+
+    existing = {check.category: check for check in trip.booking_checks}
+    user = db.session.get(User, session.get('user_id'))
+    checker = (user.display_name or user.username) if user else session.get('username', '')
+
+    for category, values in requested_checks.items():
+        if not isinstance(values, dict) or not isinstance(values.get('confirmed'), bool):
+            return jsonify({'error': f'{category}.confirmed 必須是布林值'}), 400
+
+        check = existing.get(category)
+        if not check:
+            check = TripBookingCheck(trip=trip, category=category)
+            db.session.add(check)
+            existing[category] = check
+
+        was_confirmed = bool(check.is_confirmed)
+        check.is_confirmed = values['confirmed']
+        check.note = str(values.get('note', '')).strip()[:1000]
+        check.updated_at = datetime.utcnow()
+
+        if check.is_confirmed and not was_confirmed:
+            check.confirmed_by = checker
+            check.confirmed_at = datetime.utcnow()
+        elif not check.is_confirmed:
+            check.confirmed_by = ''
+            check.confirmed_at = None
+
+    log_activity('update', 'booking_check', f'行程 #{trip.id} {trip.customer_name}')
+    db.session.commit()
+    return jsonify(build_booking_summary(trip.booking_checks))
+
+
 # ─── Trip Copy ────────────────────────────────────────────────────────────────
 
 @app.route('/api/trips/<int:id>/copy', methods=['POST'])
@@ -772,3 +891,6 @@ def search_customers():
             seen.add(key)
             customers.append({'name': t.customer_name, 'phone': t.customer_phone, 'email': t.customer_email})
     return jsonify(customers[:10])
+
+
+
