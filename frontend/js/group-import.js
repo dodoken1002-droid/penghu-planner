@@ -1,6 +1,7 @@
 (function () {
   let previewItems = [];
   let activeTripId = null;
+  let initialized = false;
 
   const labels = {
     trip: '可匯入', cancelled: '取消團', reference: '參考資料',
@@ -8,7 +9,9 @@
   };
 
   function addStyles() {
+    if (document.getElementById('group-import-styles')) return;
     const style = document.createElement('style');
+    style.id = 'group-import-styles';
     style.textContent = `
       .group-import-modal{max-width:1100px;max-height:88vh;overflow:auto}
       .group-import-table{width:100%;border-collapse:collapse;font-size:.88rem}
@@ -17,33 +20,26 @@
       .import-kind{white-space:nowrap;font-weight:600}.import-warning{color:#b45309;font-size:.78rem}
       .operations-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
       .operations-grid .wide{grid-column:1/-1}.operations-grid label{display:block;font-weight:600;margin-bottom:5px}
-      @media(max-width:700px){.operations-grid{grid-template-columns:1fr}}
+      .excel-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+      @media(max-width:700px){.operations-grid{grid-template-columns:1fr}.excel-actions{justify-content:flex-start}}
     `;
     document.head.appendChild(style);
   }
 
   function addUi() {
-    const titleRow = document.querySelector('.page > .flex-between');
-    if (titleRow && !document.getElementById('excel-import-button')) {
-      const button = document.createElement('button');
-      button.id = 'excel-import-button';
-      button.className = 'btn btn-success';
-      button.textContent = '📥 匯入接團 Excel';
-      button.onclick = openImportModal;
-      titleRow.querySelector('.btn')?.before(button);
-    }
+    if (document.getElementById('excel-import-overlay')) return;
     document.body.insertAdjacentHTML('beforeend', `
       <div class="modal-overlay" id="excel-import-overlay">
         <div class="modal group-import-modal">
           <div class="modal-title">📥 接團 Excel 匯入預覽</div>
-          <p class="text-muted">先辨識每張工作表，不會立即建立資料。取消團與參考資料預設不勾選。</p>
+          <p class="text-muted">建議使用系統匯出的標準 Excel。分析只會預覽；按下「建立／更新勾選行程」後才寫入。</p>
           <input class="form-control" type="file" id="excel-import-file" accept=".xlsx">
           <div id="excel-import-summary" style="margin:12px 0"></div>
           <div id="excel-import-preview" style="overflow:auto"></div>
           <div class="modal-actions">
             <button class="btn btn-outline" onclick="closeExcelImport()">取消</button>
             <button class="btn btn-primary" id="excel-preview-button" onclick="previewExcelImport()">分析檔案</button>
-            <button class="btn btn-success" id="excel-import-confirm" onclick="confirmExcelImport()" style="display:none">建立勾選行程</button>
+            <button class="btn btn-success" id="excel-import-confirm" onclick="confirmExcelImport()" style="display:none">建立／更新勾選行程</button>
           </div>
         </div>
       </div>
@@ -94,8 +90,9 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '分析失敗');
       previewItems = data.items;
+      const counts = data.counts || {};
       document.getElementById('excel-import-summary').textContent =
-        `共 ${data.total_sheets} 張工作表；可匯入 ${data.counts.trip} 團、取消 ${data.counts.cancelled}、參考／附屬 ${data.counts.reference + data.counts.supporting}、待確認 ${data.counts.review}`;
+        `共 ${data.total_sheets} 筆；可匯入／更新 ${counts.trip || 0}、取消 ${counts.cancelled || 0}、參考／附屬 ${(counts.reference || 0) + (counts.supporting || 0)}、待確認 ${counts.review || 0}`;
       renderPreview();
       document.getElementById('excel-import-confirm').style.display = '';
     } catch (error) {
@@ -107,17 +104,22 @@
   }
 
   function renderPreview() {
+    if (!previewItems.length) {
+      document.getElementById('excel-import-preview').innerHTML = '<div class="import-warning">找不到可預覽的資料列，請下載空白範本確認欄位格式。</div>';
+      return;
+    }
     document.getElementById('excel-import-preview').innerHTML = `<table class="group-import-table"><thead><tr>
-      <th>匯入</th><th>分類</th><th>來源工作表</th><th>團名</th><th>出發</th><th>回程</th><th>成人</th><th>辨識內容</th>
+      <th>匯入</th><th>系統編號</th><th>分類</th><th>來源</th><th>團名</th><th>出發</th><th>回程</th><th>成人</th><th>辨識內容</th>
       </tr></thead><tbody>${previewItems.map((item, index) => `<tr>
         <td><input type="checkbox" ${item.selected ? 'checked' : ''} onchange="updateImportItem(${index},'selected',this.checked)"></td>
+        <td>${item.trip_id || '新增'}</td>
         <td class="import-kind">${labels[item.kind] || item.kind}</td>
         <td>${escapeHtml(item.source_sheet)}${item.warning ? `<div class="import-warning">${escapeHtml(item.warning)}</div>` : ''}</td>
         <td><input type="text" value="${escapeHtml(item.group_name)}" onchange="updateImportItem(${index},'group_name',this.value)"></td>
-        <td><input type="date" value="${item.trip_date}" onchange="updateImportItem(${index},'trip_date',this.value)"></td>
-        <td><input type="date" value="${item.return_date}" onchange="updateImportItem(${index},'return_date',this.value)"></td>
-        <td><input type="number" min="0" max="500" value="${item.adults}" onchange="updateImportItem(${index},'adults',Number(this.value))" style="min-width:75px;width:75px"></td>
-        <td>${escapeHtml(item.signals.join('、') || '尚未辨識')}</td>
+        <td><input type="date" value="${item.trip_date || ''}" onchange="updateImportItem(${index},'trip_date',this.value)"></td>
+        <td><input type="date" value="${item.return_date || ''}" onchange="updateImportItem(${index},'return_date',this.value)"></td>
+        <td><input type="number" min="0" max="500" value="${item.adults || 0}" onchange="updateImportItem(${index},'adults',Number(this.value))" style="min-width:75px;width:75px"></td>
+        <td>${escapeHtml((item.signals || []).join('、') || '尚未辨識')}</td>
       </tr>`).join('')}</tbody></table>`;
   }
 
@@ -126,13 +128,13 @@
   async function confirmExcelImport() {
     const selected = previewItems.filter(item => item.selected);
     if (!selected.length) return toast('請至少勾選一團', 'error');
-    if (!confirm(`確定建立 ${selected.length} 筆行程？匯入後仍需核對成本與行程內容。`)) return;
+    if (!confirm(`確定處理 ${selected.length} 筆？有系統編號會更新原資料，沒有編號會建立新行程。`)) return;
     try {
       const result = await apiFetch('/api/trips/import', {method:'POST', body:JSON.stringify({items: previewItems})});
-      toast(`已建立 ${result.created_count} 筆；略過 ${result.skipped.length} 筆`);
+      toast(`已新增 ${result.created_count || 0} 筆、更新 ${result.updated_count || 0} 筆；略過 ${(result.skipped || []).length} 筆`);
       closeExcelImport();
       await loadTrips();
-    } catch (error) { toast('匯入失敗', 'error'); }
+    } catch (error) { toast('匯入失敗，請確認欄位格式', 'error'); }
   }
 
   const fields = [
@@ -177,12 +179,22 @@
   function closeExcelImport() { document.getElementById('excel-import-overlay').classList.remove('open'); }
   function closeTripOperations() { activeTripId = null; document.getElementById('operations-overlay').classList.remove('open'); }
 
+  function initialize() {
+    if (initialized) return;
+    initialized = true;
+    addStyles();
+    addUi();
+    injectOperationsButtons();
+    const tbody = document.getElementById('trips-tbody');
+    if (tbody) new MutationObserver(injectOperationsButtons).observe(tbody, {childList:true, subtree:true});
+  }
+
   Object.assign(window, {openImportModal, previewExcelImport, confirmExcelImport, updateImportItem,
     closeExcelImport, openTripOperations, saveTripOperations, closeTripOperations});
 
-  window.addEventListener('DOMContentLoaded', () => {
-    addStyles(); addUi(); injectOperationsButtons();
-    const tbody = document.getElementById('trips-tbody');
-    if (tbody) new MutationObserver(injectOperationsButtons).observe(tbody, {childList:true, subtree:true});
-  });
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initialize, {once: true});
+  } else {
+    initialize();
+  }
 })();
