@@ -27,6 +27,8 @@ function _updateNav(user) {
   if (plannerLink) plannerLink.style.display = user.role === 'admin' ? '' : 'none';
   if (tripsLink)   tripsLink.style.display   = ['admin','viewer'].includes(user.role) ? '' : 'none';
   if (adminLink)   adminLink.style.display   = ['admin','editor'].includes(user.role) ? '' : 'none';
+  const islandsLink = document.getElementById('nav-islands');
+  if (islandsLink) islandsLink.style.display = ['admin','viewer'].includes(user.role) ? '' : 'none';
 
   // Append username chip + logout button (once)
   const navLinks = document.querySelector('.nav-links');

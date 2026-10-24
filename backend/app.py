@@ -895,3 +895,7 @@ def search_customers():
 # Register Excel group-intake and operations APIs after core models/routes exist.
 from backend.group_import import register_group_import
 TripOperation = register_group_import(app, db, Trip, require_role, log_activity)
+
+# The island view reads anonymous planning aggregates only; no schema changes.
+from backend.islands import register_islands
+register_islands(app, db, Trip, Attraction, TripBookingCheck, ActivityLog, require_role, frontend_dir)
