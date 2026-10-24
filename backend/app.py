@@ -6,6 +6,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
+from backend.database_url import normalize_database_url
 import os, json
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -14,9 +15,7 @@ frontend_dir = os.path.join(basedir, '..', 'frontend')
 app = Flask(__name__, static_folder=frontend_dir, static_url_path='')
 CORS(app, supports_credentials=True)
 
-_db_url = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(basedir, "penghu.db")}')
-if _db_url.startswith('postgres://'):
-    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+_db_url = normalize_database_url(os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(basedir, "penghu.db")}'))
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
