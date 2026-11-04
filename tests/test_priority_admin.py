@@ -35,6 +35,18 @@ r = client.get('/api/priorities/admin/summary')
 assert r.status_code == 200 and r.json['count'] == 0
 assert r.headers['Cache-Control'] == 'no-store'
 assert client.get('/priorities/admin').status_code == 200
+os.environ['RAILWAY_ENVIRONMENT_NAME'] = 'test'
+from backend.priorities import ISSUES, PriorityNetworkSignal
+payload = {'ranking': ISSUES[:5], 'age_range':'不願透露', 'gender':'不願透露'}
+for _ in range(3):
+    assert client.post('/api/priorities/responses', json=payload, headers={'X-Real-IP':'198.51.100.8'}).status_code == 201
+result = client.get('/api/priorities/admin/summary').json
+assert result['count'] == 3
+assert result['network']['groups'] == 1 and result['network']['responses'] == 3
+assert next(x for x in result['issues'] if x['name'] == ISSUES[0])['ranks'] == [3,0,0,0,0]
+with app.app_context():
+    stored = PriorityNetworkSignal.query.first()
+    assert stored and '198.51.100.8' not in stored.fingerprint
 del os.environ['SECRET_KEY']
 assert client.get('/api/priorities/admin/summary').status_code == 503
 '''
