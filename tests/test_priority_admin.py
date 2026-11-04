@@ -48,7 +48,7 @@ with app.app_context():
     stored = PriorityNetworkSignal.query.first()
     assert stored and '198.51.100.8' not in stored.fingerprint
 small = result['age_breakdowns']['不願透露']
-assert small['count'] == 3 and small['suppressed'] is True and 'issues' not in small
+assert small['count'] == 3 and small['suppressed'] is False and small['issues'][0]['average'] == 5.0
 payload['age_range'] = '18–29歲'
 for _ in range(5):
     assert client.post('/api/priorities/responses', json=payload).status_code == 201
