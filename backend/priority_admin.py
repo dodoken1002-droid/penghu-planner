@@ -64,13 +64,12 @@ def priority_admin_summary():
     breakdown = {}
     for age, group in grouped.items():
         n = group['count']
-        item = {'count': n, 'suppressed': n < 5}
-        if n >= 5:
-            item['issues'] = sorted(
-                [{'name': name, 'points': group['scores'][name],
-                  'average': round(group['scores'][name] / n, 2),
-                  'selected': group['selected'][name]} for name in ISSUES],
-                key=lambda row: (-row['points'], row['name']))
+        item = {'count': n, 'suppressed': False}
+        item['issues'] = sorted(
+            [{'name': name, 'points': group['scores'][name],
+              'average': round(group['scores'][name] / n, 2),
+              'selected': group['selected'][name]} for name in ISSUES],
+            key=lambda row: (-row['points'], row['name']))
         breakdown[age] = item
     cutoff = datetime.utcnow() - timedelta(days=7)
     PriorityNetworkSignal.query.filter(PriorityNetworkSignal.created_at < cutoff).delete(synchronize_session=False)
