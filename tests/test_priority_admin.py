@@ -47,6 +47,15 @@ assert next(x for x in result['issues'] if x['name'] == ISSUES[0])['ranks'] == [
 with app.app_context():
     stored = PriorityNetworkSignal.query.first()
     assert stored and '198.51.100.8' not in stored.fingerprint
+small = result['age_breakdowns']['不願透露']
+assert small['count'] == 3 and small['suppressed'] is True and 'issues' not in small
+payload['age_range'] = '18–29歲'
+for _ in range(5):
+    assert client.post('/api/priorities/responses', json=payload).status_code == 201
+group = client.get('/api/priorities/admin/summary').json['age_breakdowns']['18–29歲']
+assert group['count'] == 5 and group['suppressed'] is False
+assert group['issues'][0]['name'] == ISSUES[0] and group['issues'][0]['average'] == 5.0
+assert group['issues'][0]['selected'] == 5
 del os.environ['SECRET_KEY']
 assert client.get('/api/priorities/admin/summary').status_code == 503
 '''
