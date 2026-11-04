@@ -1,6 +1,7 @@
 import os
 from backend.app import app, db
 from backend.seed_data import seed_database
+import backend.priorities  # register survey routes and model
 
 # 初始化資料庫（gunicorn 啟動時執行）
 with app.app_context():
