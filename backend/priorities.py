@@ -1,4 +1,9 @@
 import json
+import os
+import hmac
+import hashlib
+import ipaddress
+from datetime import datetime, timedelta
 from flask import jsonify, request, send_from_directory
 from backend.app import app, db, frontend_dir
 
@@ -15,6 +20,30 @@ class PriorityDemographic(db.Model):
     response_id = db.Column(db.Integer, db.ForeignKey('public_priority_responses.id'), primary_key=True)
     age_range = db.Column(db.String(30), nullable=False)
     gender = db.Column(db.String(30), nullable=False)
+
+class PriorityNetworkSignal(db.Model):
+    __tablename__ = 'public_priority_network_signals'
+    response_id = db.Column(db.Integer, db.ForeignKey('public_priority_responses.id'), primary_key=True)
+    fingerprint = db.Column(db.String(64), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+def store_network_signal(response_id):
+    # Railway provides X-Real-IP. Missing/invalid addresses are not replaced with
+    # the proxy's address, because that could falsely group all participants.
+    key = os.environ.get('SECRET_KEY', '')
+    raw = request.headers.get('X-Real-IP', '') if os.environ.get('RAILWAY_ENVIRONMENT_NAME') else ''
+    if len(key) < 32 or not raw:
+        return
+    try:
+        ip = str(ipaddress.ip_address(raw.strip()))
+    except ValueError:
+        return
+    now = datetime.utcnow()
+    # A different HMAC per day avoids tracking the same address across days.
+    payload = ('priority-survey-v1|' + now.strftime('%Y-%m-%d') + '|' + ip).encode('utf-8')
+    fingerprint = hmac.new(key.encode('utf-8'), payload, hashlib.sha256).hexdigest()
+    PriorityNetworkSignal.query.filter(PriorityNetworkSignal.created_at < now - timedelta(days=7)).delete(synchronize_session=False)
+    db.session.add(PriorityNetworkSignal(response_id=response_id, fingerprint=fingerprint, created_at=now))
 
 AGE_RANGES = {'未滿18歲', '18–29歲', '30–39歲', '40–49歲', '50–59歲', '60–69歲', '70歲以上', '不願透露'}
 GENDERS = {'女性', '男性', '其他性別認同', '不願透露'}
@@ -51,6 +80,7 @@ def priority_submit():
     db.session.add(response)
     db.session.flush()
     db.session.add(PriorityDemographic(response_id=response.id, age_range=age, gender=gender))
+    store_network_signal(response.id)
     db.session.commit()
     return jsonify(ok=True), 201
 
