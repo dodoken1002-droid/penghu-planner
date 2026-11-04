@@ -1,6 +1,7 @@
 import os
 from backend.app import app, db
 from backend.seed_data import seed_database
+import backend.priorities  # register survey routes and model
 
 if __name__ == '__main__':
     with app.app_context():
