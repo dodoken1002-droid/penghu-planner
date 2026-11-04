@@ -2,6 +2,7 @@ import os
 from backend.app import app, db
 from backend.seed_data import seed_database
 import backend.priorities  # register survey routes and model
+import backend.priority_admin  # register private survey dashboard
 
 if __name__ == '__main__':
     with app.app_context():
