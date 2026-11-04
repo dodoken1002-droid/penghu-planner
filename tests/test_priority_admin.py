@@ -8,8 +8,7 @@ class PriorityAdminTest(unittest.TestCase):
         code = r'''
 import os
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-os.environ['SECRET_KEY'] = 'test-only-secret'
-os.environ['SURVEY_ADMIN_USERNAME'] = 'owner-test'
+os.environ['SECRET_KEY'] = 'test-only-secret-with-at-least-32-characters'
 from backend.app import app, db
 import backend.priorities
 import backend.priority_admin
@@ -31,12 +30,12 @@ with client.session_transaction() as sess:
     sess['username'] = 'other-admin'
 assert client.get('/api/priorities/admin/summary').status_code == 403
 with client.session_transaction() as sess:
-    sess['username'] = 'owner-test'
+    sess['username'] = 'admin'
 r = client.get('/api/priorities/admin/summary')
 assert r.status_code == 200 and r.json['count'] == 0
 assert r.headers['Cache-Control'] == 'no-store'
 assert client.get('/priorities/admin').status_code == 200
-del os.environ['SURVEY_ADMIN_USERNAME']
+del os.environ['SECRET_KEY']
 assert client.get('/api/priorities/admin/summary').status_code == 503
 '''
         p = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, env=os.environ.copy())
